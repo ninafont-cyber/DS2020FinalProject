@@ -483,6 +483,65 @@ highlight that progress toward renewable energy adoption varies
 significantly by sector, with the electric power sector leading the
 transition.
 
-# Conclusion: This analysis examined long-term trends in U.S. energy consumption from 1960 to 2023 using data from the U.S. Energy Information Administration. Across all analyses, fossil fuels remain the dominant energy source in the United States, particularly within the transportation and industrial sectors. However, the results also show steady growth in renewable energy consumption over time, especially in the electric power, residential, and commercial sectors. Nuclear energy plays a significant role in the U.S. energy system, contributing substantial and stable energy production beginning in the late 20th century. While nuclear consumption does not approach fossil fuel levels, it often exceeds renewable energy consumption during certain periods, highlighting its importance as a low-carbon energy source within the current energy mix.Differences in energy use across end-use sectors reveal disparities in the pace of energy transition. Some sectors, such as electric power, show meaningful diversification toward non-fossil sources, while others, particularly transportation, remain heavily reliant on fossil fuels. These findings suggest that although progress toward cleaner energy sources has been made, a more diversified energy portfolio is needed to reduce dependence on fossil fuels and support long-term sustainability. Continued expansion of renewable and nuclear energy sources may be essential to achieving a more balanced and resilient U.S. energy system.
+``` library(tidyverse)
 
-git config –global user.email “<YOUR_GITHUB_EMAIL@EXAMPLE.COM>”
+energy_long <- energy %>%
+  pivot_longer(
+    cols = matches("^\\d{4}$"),
+    names_to = "year",
+    values_to = "consumption"
+  ) %>%
+  mutate(
+    year = as.integer(year),
+    consumption = as.numeric(consumption)
+  ) %>%
+  filter(State == "US")
+
+glimpse(energy_long)
+
+energy_longs <- energy %>%
+  pivot_longer(
+    cols = matches("^\\d{4}$"),
+    names_to = "year",
+    values_to = "consumption"
+  ) %>%
+  mutate(
+    year = as.integer(year),
+    consumption = as.numeric(consumption)
+  ) %>%
+  filter(State == "US")
+
+
+renew_parts <- energy_longs %>%
+  filter(State == "US", MSN %in% c("WYTCB", "SOTCB", "HYTCB", "BMTCB", "GETCB")) %>%
+  mutate(type = recode(MSN,
+    "WYTCB" = "Wind",
+    "SOTCB" = "Solar",
+    "HYTCB" = "Hydro",
+    "BMTCB" = "Biomass",
+    "GETCB" = "Geothermal"
+  ))
+
+
+ggplot(renew_parts, aes(year, consumption, fill = type)) +
+  geom_area() +
+  scale_y_continuous(labels = ) +
+  labs(
+    title = "U.S. Renewables by Type (Absolute)",
+    subtitle = "1960–2023",
+    x = "Year",
+    y = "Consumption (Billion Btu)",
+    fill = "Renewable type"
+  ) +
+  theme_minimal()
+```
+
+\#My findings: Biomass currently is a majority of the US renewable
+energy source which makes sense since most cars run off of ethanol gas.
+you can see solar starting to get popular in the year 1987 and wind
+getting popular in the mid 2000s. Hydro has been consistent but not
+growing or shrinking and after doing research this is because no major
+dams have been built in a while. Geothermal energy is minimal and making
+it the outlier here.
+
+# Conclusion: This analysis examined long-term trends in U.S. energy consumption from 1960 to 2023 using data from the U.S. Energy Information Administration. Across all analyses, fossil fuels remain the dominant energy source in the United States, particularly within the transportation and industrial sectors. However, the results also show steady growth in renewable energy consumption over time, especially in the electric power, residential, and commercial sectors. Nuclear energy plays a significant role in the U.S. energy system, contributing substantial and stable energy production beginning in the late 20th century. While nuclear consumption does not approach fossil fuel levels, it often exceeds renewable energy consumption during certain periods, highlighting its importance as a low-carbon energy source within the current energy mix.Differences in energy use across end-use sectors reveal disparities in the pace of energy transition. Some sectors, such as electric power, show meaningful diversification toward non-fossil sources, while others, particularly transportation, remain heavily reliant on fossil fuels. These findings suggest that although progress toward cleaner energy sources has been made, a more diversified energy portfolio is needed to reduce dependence on fossil fuels and support long-term sustainability. Continued expansion of renewable and nuclear energy sources may be essential to achieving a more balanced and resilient U.S. energy system.
