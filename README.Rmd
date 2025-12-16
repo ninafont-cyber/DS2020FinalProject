@@ -1,0 +1,240 @@
+---
+title: "Final Project"
+author: "Nina Fontanella"
+output: github_document
+---
+
+# Introduction: This project explores trends in energy consumption in the United States using publicly available data from the U.S. Energy Information Administration (EIA). As concerns about climate change and sustainability increase, understanding how energy usage has changed over time is increasingly important. Using historical energy consumption data, this analysis focuses on trends in energy consumption and compares renewables to other major energy sources. The goal of this project is to identify long-term patterns in U.S. energy use and evaluate the role renewables play in the overall energy mix and subsequently how we can do better in diversifying our energy portfolio and using more renewables in the U.S.
+
+# Data: The data used in this project come from the U.S. Energy Information Administration (EIA) State Energy Data System (SEDS). This publicly available dataset provides annual estimates of U.S. energy consumption by energy source and end-use sector from 1960 through 2023. Energy consumption values are reported in billion British thermal units (Btu). For this analysis, the dataset was filtered to include only national-level data for the United States. Specific EIA series codes were used to represent major energy categories, including renewable energy, fossil fuels, and nuclear energy.
+
+# Methods: Data analysis was conducted using R and RStudio. The dataset was first reshaped from a wide format to a long format to allow for time-series analysis. Data were filtered to include only U.S.-level observations. Energy sources were categorized into renewable energy, fossil fuels, and nuclear energy using EIA series codes. Summary statistics were calculated by year, energy source, and end-use sector. Line plots were created using the ggplot2 package to visualize trends in energy consumption over time and to compare energy sources across sectors.
+
+```{r load-data}
+library(tidyverse)
+
+energy <- read_csv("use_US.csv")
+glimpse(energy)
+```
+
+```{r reshape-data}
+energy_long <- energy %>%
+  pivot_longer(
+    cols = `1960`:`2023`,
+    names_to = "year",
+    values_to = "consumption"
+  ) %>%
+  mutate(year = as.integer(year))
+
+glimpse(energy_long)
+```
+
+
+# Question 1: How has renewable energy consumption in the United States changed over time?
+
+```{r check-renewables}
+energy_long %>%
+  filter(State == "US") %>%
+  distinct(MSN) %>%
+  filter(str_detect(MSN, "RET"))
+```
+
+```{r list-msn}
+energy_long %>%
+  filter(State == "US") %>%
+  distinct(MSN) %>%
+  arrange(MSN)
+```
+
+```{r define-renewables}
+renewable_prefixes <- c(
+  "WND",  # Wind
+  "SUN",  # Solar
+  "HYD",  # Hydroelectric
+  "BIO",  # Biomass
+  "GEO"   # Geothermal
+)
+```
+
+```{r renewable-total}
+renewable_by_year <- energy_long %>%
+  filter(
+    State == "US",
+    str_sub(MSN, 1, 3) %in% renewable_prefixes
+  ) %>%
+  group_by(year) %>%
+  summarise(
+    renewable_consumption = sum(consumption, na.rm = TRUE),
+    .groups = "drop"
+  )
+glimpse(renewable_by_year)
+
+```
+```{r find-large-series}
+energy_long %>%
+  filter(State == "US") %>%
+  group_by(MSN) %>%
+  summarise(
+    total = sum(abs(consumption), na.rm = TRUE),
+    .groups = "drop"
+  ) %>%
+  arrange(desc(total)) %>%
+  slice(1:20)
+```
+```{r}
+```
+
+
+```{r}
+```
+
+
+```{r}
+```
+
+
+```{r find-renewable-code}
+energy_long %>%
+  filter(State == "US") %>%
+  distinct(MSN) %>%
+  filter(str_detect(MSN, "^RE")) %>%   # codes starting with RE
+  arrange(MSN)
+```
+
+```{r plot-renewables-over-time}
+energy_long %>%
+  filter(State == "US", MSN == "RETCB") %>%
+  ggplot(aes(x = year, y = consumption)) +
+  geom_line(color = "forestgreen", linewidth = 1) +
+  labs(
+    title = "U.S. Renewable Energy Consumption Over Time",
+    subtitle = "1960–2023",
+    x = "Year",
+    y = "Consumption (Billion Btu)",
+    caption = "Source: U.S. Energy Information Administration (SEDS)"
+  ) +
+  theme_minimal()
+```
+#My Findings: U.S. renewable energy consumption increased steadily from 1960 to 2023, with especially rapid growth beginning in the early 2000s. While there is a brief slowdown around the late 1990s, renewable energy use accelerates sharply afterward, reflecting increased adoption of wind, solar, and other renewable technologies. This trend indicates a long-term shift toward renewable energy sources in the U.S. energy portfolio.
+
+#Question 2: How does the growth of renewable energy consumption compare to fossil fuel energy consumption over time?
+```{r renewable_vs_fossil_data}
+energy_compare <- energy_long %>%
+  filter(State == "US", MSN %in% c("RETCB", "FFTCB")) %>%
+  mutate(
+    source = if_else(
+      MSN == "RETCB",
+      "Renewable Energy",
+      "Fossil Fuels"
+    )
+  )
+
+glimpse(energy_compare)
+```
+
+```{r plot-renewable-vs-fossil}
+ggplot(energy_compare, aes(x = year, y = consumption, color = source)) +
+  geom_line(linewidth = 1) +
+  labs(
+    title = "Renewable vs Fossil Fuel Energy Consumption in the U.S.",
+    subtitle = "1960–2023",
+    x = "Year",
+    y = "Consumption (Billion Btu)",
+    color = "Energy Source",
+    caption = "Source: U.S. Energy Information Administration (SEDS)"
+  ) +
+  theme_minimal()
+```
+#My Findings: Fossil fuel energy consumption has consistently remained much higher than renewable energy consumption between 1960 and 2023. Fossil fuel use increased rapidly from 1960 through the early 1970s and continued to grow more gradually through the late 20th century. Around 2010, fossil fuel consumption begins to decline slightly and then plateaus, suggesting a potential stabilization or gradual reduction in use. In contrast, renewable energy consumption remains relatively low throughout the earlier decades but shows steady growth over time, with more pronounced increases in recent years. This divergence highlights both the historical dominance of fossil fuels and the emerging role of renewables in the U.S. energy system.
+
+#Question 3: Which energy sources account for the largest share of total U.S. energy consumption, and how has this changed over time?
+```{r energy-source-share-data}
+energy_sources <- energy_long %>%
+  filter(
+    State == "US",
+    MSN %in% c("FFTCB", "RETCB", "NUETB")
+  ) %>%
+  mutate(
+    source = case_when(
+      MSN == "FFTCB" ~ "Fossil Fuels",
+      MSN == "RETCB" ~ "Renewable Energy",
+      MSN == "NUETB" ~ "Nuclear Energy"
+    )
+  )
+
+glimpse(energy_sources)
+```
+```{r check-q3-codes}
+energy_long %>%
+  filter(State == "US", MSN %in% c("FFTCB", "RETCB", "NUETB")) %>%
+  distinct(MSN)
+```
+```{r plot-energy-sources-q3}
+ggplot(energy_sources, aes(x = year, y = consumption, color = source)) +
+  geom_line(linewidth = 1) +
+  labs(
+    title = "Major Energy Sources in U.S. Energy Consumption",
+    subtitle = "1960–2023",
+    x = "Year",
+    y = "Consumption (Billion Btu)",
+    color = "Energy Source",
+    caption = "Source: U.S. Energy Information Administration (SEDS)"
+  ) +
+  theme_minimal()
+```
+#My Findings: Fossil fuels account for the largest share of total U.S. energy consumption throughout the entire period from 1960 to 2023. While nuclear energy consumption increased substantially beginning in the 1970s and experienced strong growth through the 1990s, it remained well below fossil fuel consumption levels. Nuclear energy does relatively exceeded renewable energy consumption during the late 20th century, with the largest gap occurring roughly between 1990 and 2010. In more recent years, renewable energy consumption has increased steadily and has begun to approach nuclear energy levels. These trends indicate that although fossil fuels continue to dominate the U.S. energy mix, nuclear and renewable energy sources have played increasingly important roles over time, reflecting gradual diversification of the U.S. energy portfolio.
+
+#Question 4: How does energy consumption by source differ across end-use sectors?
+```{r define-sector-codes}
+sector_codes <- tibble(
+  MSN = c(
+    "FFRCB", "FFCCB", "FFICB", "FFTCB",  # Fossil fuels
+    "RERC B", "RECCB", "REICB", "RETCB",  # Renewables
+    "NUETB"                              # Nuclear
+  ),
+  sector = c(
+    "Residential", "Commercial", "Industrial", "Transportation",
+    "Residential", "Commercial", "Industrial", "Transportation",
+    "Electric Power"
+  ),
+  source = c(
+    "Fossil Fuels", "Fossil Fuels", "Fossil Fuels", "Fossil Fuels",
+    "Renewable Energy", "Renewable Energy", "Renewable Energy", "Renewable Energy",
+    "Nuclear Energy"
+  )
+)
+```
+
+
+```{r sector-energy-data}
+energy_by_sector <- energy_long %>%
+  filter(State == "US") %>%
+  inner_join(sector_codes, by = "MSN") %>%
+  group_by(year, sector, source) %>%
+  summarise(
+    consumption = sum(consumption, na.rm = TRUE),
+    .groups = "drop"
+  )
+
+glimpse(energy_by_sector)
+
+```
+```{r plot-energy-by-sector}
+energy_by_sector %>%
+  ggplot(aes(x = year, y = consumption, color = source)) +
+  geom_line(linewidth = 1) +
+  facet_wrap(~ sector, scales = "free_y") +
+  labs(
+    title = "U.S. Energy Consumption by Source Across End-Use Sectors",
+    subtitle = "1960–2023",
+    x = "Year",
+    y = "Consumption (Billion Btu)",
+    color = "Energy Source",
+    caption = "Source: U.S. Energy Information Administration (SEDS)"
+  ) +
+  theme_minimal()
+```
+#My Findings: Energy consumption patterns differ substantially across end-use sectors. Transportation is dominated by fossil fuel consumption throughout the entire period, with minimal contributions from renewable or nuclear energy. This reflects the continued reliance on petroleum-based fuels for transportation in the United States. In contrast, the electric power sector shows a strong presence of nuclear energy beginning in the 1970s, followed by a notable increase in renewable energy consumption in more recent decades. This sector plays a critical role in integrating non-fossil energy sources into the overall energy system. Residential and commercial sectors demonstrate steady growth in renewable energy consumption over time, indicating increased adoption of cleaner energy sources such as solar and wind. The industrial sector exhibits a mixed pattern, with fossil fuels remaining dominant but renewables gradually increasing. Overall, these results highlight that progress toward renewable energy adoption varies significantly by sector, with the electric power sector leading the transition.
+
+
+# Conclusion: This analysis examined long-term trends in U.S. energy consumption from 1960 to 2023 using data from the U.S. Energy Information Administration. Across all analyses, fossil fuels remain the dominant energy source in the United States, particularly within the transportation and industrial sectors. However, the results also show steady growth in renewable energy consumption over time, especially in the electric power, residential, and commercial sectors. Nuclear energy plays a significant role in the U.S. energy system, contributing substantial and stable energy production beginning in the late 20th century. While nuclear consumption does not approach fossil fuel levels, it often exceeds renewable energy consumption during certain periods, highlighting its importance as a low-carbon energy source within the current energy mix.Differences in energy use across end-use sectors reveal disparities in the pace of energy transition. Some sectors, such as electric power, show meaningful diversification toward non-fossil sources, while others, particularly transportation, remain heavily reliant on fossil fuels. These findings suggest that although progress toward cleaner energy sources has been made, a more diversified energy portfolio is needed to reduce dependence on fossil fuels and support long-term sustainability. Continued expansion of renewable and nuclear energy sources may be essential to achieving a more balanced and resilient U.S. energy system.
